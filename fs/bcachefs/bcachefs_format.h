@@ -423,7 +423,8 @@ enum bch_bkey_type_flags {
 	x(logged_op_truncate,	32,	BKEY_TYPE_strict_btree_checks)	\
 	x(logged_op_finsert,	33,	BKEY_TYPE_strict_btree_checks)	\
 	x(accounting,		34,	BKEY_TYPE_strict_btree_checks)	\
-	x(inode_alloc_cursor,	35,	BKEY_TYPE_strict_btree_checks)
+	x(inode_alloc_cursor,	35,	BKEY_TYPE_strict_btree_checks)	\
+	x(extent_block_checksums, 36,	BKEY_TYPE_strict_btree_checks)
 
 enum bch_bkey_type {
 #define x(name, nr, ...) KEY_TYPE_##name	= nr,

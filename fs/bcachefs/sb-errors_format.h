@@ -320,7 +320,12 @@ enum bch_fsck_flags {
 	x(dirent_stray_data_after_cf_name,			305,	0)		\
 	x(rebalance_work_incorrectly_set,			309,	FSCK_AUTOFIX)	\
 	x(rebalance_work_incorrectly_unset,			310,	FSCK_AUTOFIX)	\
-	x(MAX,							311,	0)
+	x(extent_block_checksums_csum_type_unknown,		311,	0)		\
+	x(extent_block_checksums_front_pad_bad,			312,	0)		\
+	x(extent_block_checksums_back_pad_bad,			313,	0)		\
+	x(extent_block_checksums_misaligned,			315,	0)		\
+	x(extent_block_checksums_val_size_bad,			316,	0)		\
+	x(MAX,							317,	0)
 
 enum bch_sb_error_id {
 #define x(t, n, ...) BCH_FSCK_ERR_##t = n,
