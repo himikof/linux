@@ -871,6 +871,7 @@ LE64_BITMASK(BCH_SB_DEGRADED_ACTION,	struct bch_sb, flags[6], 20, 22);
 LE64_BITMASK(BCH_SB_CASEFOLD,		struct bch_sb, flags[6], 22, 24);
 LE64_BITMASK(BCH_SB_IO_ERROR_THRESHOLD,	struct bch_sb, flags[6], 24, 40);
 LE64_BITMASK(BCH_SB_LAST_FSCK_VERSION,	struct bch_sb, flags[6], 40, 56);
+LE64_BITMASK(BCH_SB_CSUM_BLOCKSIZE,	struct bch_sb, flags[6], 56, 64);
 
 static inline __u64 BCH_SB_COMPRESSION_TYPE(const struct bch_sb *sb)
 {
