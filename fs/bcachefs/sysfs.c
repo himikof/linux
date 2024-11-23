@@ -40,6 +40,7 @@
 #include "tests.h"
 
 #include <linux/blkdev.h>
+#include <linux/delay.h>
 #include <linux/sort.h>
 #include <linux/string_choices.h>
 #include <linux/sched/clock.h>
@@ -149,6 +150,7 @@ write_attribute(trigger_btree_cache_shrink);
 write_attribute(trigger_btree_key_cache_shrink);
 write_attribute(trigger_freelist_wakeup);
 write_attribute(trigger_btree_updates);
+write_attribute(trigger_journal_block);
 read_attribute(gc_gens_pos);
 __sysfs_attribute(read_fua_test, 0400);
 
@@ -545,6 +547,12 @@ STORE(bch2_fs)
 	if (attr == &sysfs_trigger_freelist_wakeup)
 		closure_wake_up(&c->freelist_wait);
 
+	if (attr == &sysfs_trigger_journal_block) {
+		bch2_journal_block(&c->journal);
+		msleep(get_random_u32() & 1023);
+		bch2_journal_unblock(&c->journal);
+	}
+
 #ifdef CONFIG_BCACHEFS_TESTS
 	if (attr == &sysfs_perf_test) {
 		char *tmp = kstrdup(buf, GFP_KERNEL), *p = tmp;
@@ -672,6 +680,7 @@ struct attribute *bch2_fs_internal_files[] = {
 	&sysfs_trigger_btree_key_cache_shrink,
 	&sysfs_trigger_freelist_wakeup,
 	&sysfs_trigger_btree_updates,
+	&sysfs_trigger_journal_block,
 
 	&sysfs_gc_gens_pos,
 
