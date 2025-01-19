@@ -2234,8 +2234,13 @@ struct bkey_s_c btree_trans_peek_key_cache(struct btree_iter *iter, struct bpos 
 					btree_iter_ip_allocated(iter));
 
 	ret =   bch2_btree_path_traverse(trans, iter->key_cache_path,
-					 iter->flags|BTREE_ITER_cached) ?:
-		bch2_btree_path_relock(trans, btree_iter_path(trans, iter), _THIS_IP_);
+					 iter->flags|BTREE_ITER_cached);
+	if (unlikely(ret))
+		return bkey_s_c_err(ret);
+
+	BUG_ON(IS_ERR(trans->paths[iter->key_cache_path].l[0].b));
+
+	ret = bch2_btree_path_relock(trans, btree_iter_path(trans, iter), _THIS_IP_);
 	if (unlikely(ret))
 		return bkey_s_c_err(ret);
 

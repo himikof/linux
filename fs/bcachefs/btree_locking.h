@@ -408,7 +408,10 @@ static inline int bch2_btree_path_upgrade(struct btree_trans *trans,
 
 static inline void btree_path_set_should_be_locked(struct btree_trans *trans, struct btree_path *path)
 {
-	EBUG_ON(!btree_node_locked(path, path->level));
+	if (!btree_node_locked(path, path->level))
+		panic("trans %px path %px idx %zu err %s",
+		      trans, path, path - trans->paths,
+		      bch2_err_str(PTR_ERR_OR_ZERO(path->l[0].b)));
 	EBUG_ON(path->uptodate);
 
 	path->should_be_locked = true;
