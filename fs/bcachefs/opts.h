@@ -14,6 +14,7 @@ extern const char * const bch2_error_actions[];
 extern const char * const bch2_degraded_actions[];
 extern const char * const bch2_fsck_fix_opts[];
 extern const char * const bch2_version_upgrade_opts[];
+extern const char * const bch2_casefold_opts[];
 extern const char * const bch2_sb_features[];
 extern const char * const bch2_sb_compat[];
 extern const char * const __bch2_btree_ids[];
@@ -231,7 +232,7 @@ enum fsck_err_opts {
 	  NULL,		"Enable erasure coding (DO NOT USE YET)")	\
 	x(casefold,			u8,				\
 	  OPT_FS|OPT_INODE|OPT_FORMAT,					\
-	  OPT_BOOL(),							\
+	  OPT_STR(bch2_casefold_opts),					\
 	  BCH_SB_CASEFOLD,		false,				\
 	  NULL,		"Dirent lookups are casefolded")		\
 	x(inodes_32bit,			u8,				\

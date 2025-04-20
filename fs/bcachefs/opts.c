@@ -36,6 +36,11 @@ const char * const bch2_version_upgrade_opts[] = {
 	NULL
 };
 
+const char * const bch2_casefold_opts[] = {
+	BCH_CASEFOLD_OPTS()
+	NULL
+};
+
 const char * const bch2_sb_features[] = {
 	BCH_SB_FEATURES()
 	NULL
