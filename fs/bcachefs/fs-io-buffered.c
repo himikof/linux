@@ -532,6 +532,60 @@ static void bch2_writepage_io_alloc(struct bch_fs *c,
 	op->wbio.bio.bi_opf	= wbc_to_write_flags(wbc);
 }
 
+static bool can_write_now(struct bch_fs *c, unsigned replicas_want, struct closure *cl)
+{
+	unsigned reserved = OPEN_BUCKETS_COUNT -
+		(OPEN_BUCKETS_COUNT - bch2_open_buckets_reserved(BCH_WATERMARK_normal)) / 2;
+
+	if (unlikely(c->open_buckets_nr_free <= reserved)) {
+		closure_wait(&c->open_buckets_wait, cl);
+		return false;
+	}
+
+	struct bch_devs_mask devs = target_rw_devs(c, BCH_DATA_user, 0);
+	bool should_wait = false;
+
+	unsigned nr_replicas = 0, i;
+	for_each_set_bit(i, devs.d, BCH_SB_MEMBERS_MAX) {
+		struct bch_dev *ca = bch2_dev_rcu_noerror(c, i);
+		if (!ca)
+			continue;
+
+		struct bch_dev_usage usage;
+		bch2_dev_usage_read_fast(ca, &usage);
+
+		u64 nr_free = dev_buckets_free(ca, usage, BCH_WATERMARK_normal);
+		if (!nr_free) {
+			should_wait = true;
+			continue;
+		}
+
+		nr_replicas += ca->mi.durability;
+		if (nr_replicas >= replicas_want)
+			return true;
+	}
+
+	if (should_wait) {
+		closure_wait(&c->freelist_wait, cl);
+		return false;
+	}
+
+	return true;
+}
+
+static void throttle_writes(struct bch_fs *c, unsigned replicas_want, struct closure *cl)
+{
+	u64 start = 0;
+	while (!can_write_now(c, replicas_want, cl)) {
+		if (!start)
+			start = local_clock();
+		closure_sync(cl);
+	}
+
+	if (start)
+		bch2_time_stats_update(&c->times[BCH_TIME_blocked_writeback_throttle], start);
+}
+
 static int __bch2_writepage(struct folio *folio,
 			    struct writeback_control *wbc,
 			    void *data)
@@ -667,17 +721,6 @@ do_io:
 	return 0;
 }
 
-static int bch2_write_cache_pages(struct address_space *mapping,
-		      struct writeback_control *wbc, void *data)
-{
-	struct folio *folio = NULL;
-	int error;
-
-	while ((folio = writeback_iter(mapping, wbc, folio, &error)))
-		error = __bch2_writepage(folio, wbc, data);
-	return error;
-}
-
 int bch2_writepages(struct address_space *mapping, struct writeback_control *wbc)
 {
 	struct bch_fs *c = mapping->host->i_sb->s_fs_info;
@@ -686,7 +729,17 @@ int bch2_writepages(struct address_space *mapping, struct writeback_control *wbc
 	bch2_inode_opts_get_inode(c, &to_bch_ei(mapping->host)->ei_inode, &w->opts);
 
 	blk_start_plug(&w->plug);
-	int ret = bch2_write_cache_pages(mapping, wbc, w);
+
+	struct closure cl;
+	closure_init_stack(&cl);
+
+	struct folio *folio = NULL;
+	int ret = 0;
+
+	while (throttle_writes(c, w->opts.data_replicas, &cl),
+	       (folio = writeback_iter(mapping, wbc, folio, &ret)))
+		ret = __bch2_writepage(folio, wbc, w);
+
 	if (w->io)
 		bch2_writepage_do_io(w);
 	blk_finish_plug(&w->plug);
