@@ -1520,6 +1520,9 @@ static void __bch2_write(struct bch_write_op *op)
 	unsigned nofs_flags;
 	int ret;
 
+	struct closure alloc_cl;
+	closure_init_stack(&alloc_cl);
+
 	nofs_flags = memalloc_nofs_save();
 
 	if (unlikely(op->opts.nocow && c->opts.nocow_enabled)) {
@@ -1561,13 +1564,24 @@ again:
 				op->nr_replicas_required,
 				op->watermark,
 				op->flags,
-				&op->cl, &wp));
-		if (unlikely(ret)) {
-			if (bch2_err_matches(ret, BCH_ERR_operation_blocked))
-				break;
+				&alloc_cl, &wp));
 
-			goto err;
+
+		if (bch2_err_matches(ret, BCH_ERR_operation_blocked)) {
+			bch2_wait_on_allocator(c, &alloc_cl);
+			continue;
 		}
+
+#if 0
+		XXX: it's currently possible for the allocator to return success
+		with cl on a waitlist, this is a bug and should be resolved by
+		the allocator flow control rework
+
+		BUG_ON(closure_nr_remaining(&alloc_cl) > 1);
+#endif
+
+		if (unlikely(ret))
+			goto err;
 
 		EBUG_ON(!wp);
 
